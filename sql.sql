@@ -1,3 +1,4 @@
+
 CREATE TABLE delivery_settings (
   id int(11) NOT NULL AUTO_INCREMENT,
   mode tinyint(1) NOT NULL DEFAULT '1',
