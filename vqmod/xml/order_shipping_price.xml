@@ -1,0 +1,352 @@
+<modification>
+
+	<id>Order delivery price</id>
+	<version>1.3</version>
+	<vqmver>1.0.0</vqmver>
+	<author>Shum</author>
+
+ 	<file name="catalog/language/english/english.php">
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $_['button_continue']
+        ]]></search>
+			<add trim="true"><![CDATA[
+               $_['button_get_shipping_price']       = 'Get distance price';
+               $_['not_calc_text']       = 'Not calc';
+               $_['error_distance_calc_text']       = 'Fill field city and city ';
+               $_['currency_text']       = 'kč';
+            ]]></add>
+      </operation>	
+
+	</file>
+
+ 	<file name="catalog/language/russian/russian.php">
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $_['button_continue']
+        ]]></search>
+			<add trim="true"><![CDATA[
+               $_['button_get_shipping_price']       = 'Расчитать стоимость доставки';
+               $_['not_calc_text']       = 'Доставка не расчитана';
+               $_['error_distance_calc_text']       = 'Выберите город и заполните поле адрес';
+               $_['currency_text']       = 'kč';
+            ]]></add>
+      </operation>		
+	</file> 
+
+ 	<file name="catalog/controller/checkout/guest.php">
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $this->session->data['account'] = 'guest';
+        ]]></search>
+			<add trim="true"><![CDATA[
+                       
+    	   $shipping_string = $this->request->post['address_1'].' '.$this->request->post['address_2'];
+           //Get delivery settings
+           $city_id = $this->request->post['city_id'];
+           
+           $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = ".$city_id." and active = 1;");
+           foreach ($product_query->rows as $product) {
+             $delivery_id = $product['id'];
+             $mode = $product['mode'];
+             $country = $product['country'];
+             $city = $product['city'];
+             $adress = $product['adress'];
+             $free_distance = $product['free_distance'];
+             $price_per_one = $product['price_per_one'];
+           }
+           
+           if ($shipping_string != "" && $delivery_id > 0){
+            
+		     $language = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, strpos($_SERVER['HTTP_ACCEPT_LANGUAGE'], ','));
+             
+             $url = "http://maps.googleapis.com/maps/api/distancematrix/json?origins=".urlencode($adress)."+".urlencode($city)."&destinations=".urlencode($shipping_string)."+".urlencode($city)."&mode=driving&language=".$language."&sensor=false";
+
+             $shipping_array = json_decode(implode("", file($url)), true);
+           
+             $distance_array = $shipping_array['rows'][0]['elements'][0]['distance'];
+             $distance_array['value'] = round($distance_array['value']/1000, 1);
+             $distance_array['distance_text'] = $distance_array['value']."km.";
+             
+             $distance_array['city_id'] = $city_id;
+             $distance_array['url'] = $url;
+             
+             if ($distance_array['value'] < $free_distance) {
+               $distance_array['price'] = 0;
+             } else {
+               if ($mode == 1) {
+                 $distance_array['price'] = round(($distance_array['value']-$free_distance)*$price_per_one, 0);
+               } elseif ($mode == 2) $distance_array['price'] = round($distance_array['value']*$price_per_one, 0);
+             }
+             $distance_array['price_text'] = $distance_array['price'].$this->language->get('currency_text');
+             
+             $shipping_status = $shipping_array['status'];
+             $destination_addresses = $shipping_array['destination_addresses'][0];
+           
+             //if ($destination_addresses)
+           
+             //Praha, Česká republika
+                      
+             //$destination_text = $distance_array['text'];
+             //$destination_value = $distance_array['value'];
+             
+             //$shipping_message = $destination_addresses."(".$destination_text." - ".$distance_array['price_text'].")<br/>";
+             $_SESSION['shipping_price_array'] = $distance_array;
+             
+           } else {
+             $shipping_status = "ERROR";
+             $shipping_message = $this->language->get('error_distance_calc_text'); 
+             
+           }
+             
+            ]]></add>
+      </operation>
+      
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $this->data['button_continue'] = $this->language->get('button_continue');
+        ]]></search>
+			<add trim="true"><![CDATA[
+               $this->data['button_get_shipping_price'] = $this->language->get('button_get_shipping_price');
+               $this->data['not_calc_text'] = $this->language->get('not_calc_text');
+               $this->data['currency_text'] = $this->language->get('currency_text');
+            ]]></add>
+      </operation>
+      
+      <operation error="skip">
+        <search position="after"><![CDATA[
+         $this->data['countries'] = $this->model_localisation_country->getCountries();
+        ]]></search>
+			<add trim="true"><![CDATA[
+               $this->load->model('shipping/calc_shipping');
+               $this->data['cities_delivery'] = $this->model_shipping_calc_shipping->getStoreList();
+               $this->data['city_id'] = $this->request->post['city_id'];
+               $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
+               $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
+            ]]></add>
+      </operation>
+	</file>
+     
+	<file name="catalog/view/theme/default/template/checkout/guest.tpl">
+	    <operation error="skip">
+            <search position="before"><![CDATA[
+              <input type="text" name="city" value="<?php echo $city; ?>" class="large-field" />
+            ]]></search>
+			 <add trim="true"><![CDATA[
+              <!-- Del
+            ]]></add>
+
+        </operation>
+
+	    <operation error="skip">
+            <search position="after"><![CDATA[
+              <input type="text" name="city" value="<?php echo $city; ?>" class="large-field" />
+            ]]></search>
+			 <add trim="true"><![CDATA[    
+              -->
+<script>
+  function PutToHidden(){
+    var city;
+    var select;
+
+    select=document.getElementById('city_id');
+    city=document.getElementById('city');
+
+    city.value=select.options[select.selectedIndex].text;
+  }
+</script>
+  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden()">
+    <option value=""><?php echo $text_select; ?></option>
+    <?php foreach ($cities_delivery as $city_delivery) { ?>
+    <?php if ($city_delivery['id'] == $city_id) { ?>
+    <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
+    <?php } else { ?>
+    <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
+    <?php } ?>
+    <?php } ?>
+  </select>
+  <?php echo "<br/>city_id:$city_id"; ?>
+  <input type="hidden" id="city" name="city" value="<?php echo $city; ?>" class="large-field" />
+            ]]></add>
+        </operation>
+	</file>			  
+
+	<file name="catalog/view/theme/default/template/checkout/checkout.tpl">
+	    <operation error="skip">
+            <search position="before"><![CDATA[
+              data: $('#payment-address input[type=\'text\'], #payment-address input[type=\'checkbox\']:checked, #payment-address select'),
+            ]]></search>
+			 <add trim="true"><![CDATA[
+              /*
+            ]]></add>
+
+        </operation>
+
+	    <operation error="skip">
+            <search position="after"><![CDATA[
+              data: $('#payment-address input[type=\'text\'], #payment-address input[type=\'checkbox\']:checked, #payment-address select'),
+            ]]></search>
+			 <add trim="true"><![CDATA[  
+             */  
+              data: $('#payment-address input[type=\'hidden\'], input[type=\'text\'], #payment-address input[type=\'checkbox\']:checked, #payment-address select'),
+            ]]></add>
+        </operation>
+	</file>	
+    
+	<file name="catalog/controller/checkout/shipping_method.php">
+      <operation error="skip">
+        <search position="after"><![CDATA[
+         if ($quote) {
+        ]]></search>
+			<add trim="true"><![CDATA[
+					    if ($result['code'] == "calc_shipping") {
+                          if(sizeof($_SESSION['shipping_price_array']) > 0){
+		                    $price = $_SESSION['shipping_price_array']['price'];  
+                            
+                            $str = "";
+                            foreach($this->session->data['guest']['payment'] as $k=>$v)  $str .= "$k=>$v<br/>";
+                            $str .= "<br/>";
+                            foreach($this->session->data['guest']['shipping'] as $k=>$v)  $str .= "$k=>$v<br/>";                       
+                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].") <br/>url:".$_SESSION['shipping_price_array']['url']."<br/>".$str;
+                            $quote['status'] = 'OK';
+                          } else {
+                            $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")";
+                            $quote['status'] = 'NO_CALC';  
+                            $price = 0;
+                          }
+                          
+                          $quote['quote']['calc_shipping']['cost']= $price;
+                          $quote['quote']['calc_shipping']['text'] = $price."kč";
+					    }
+
+
+            ]]></add>
+      </operation>
+
+	</file>
+
+	<file name="catalog/view/theme/default/template/checkout/shipping_method.tpl">
+      	
+      <operation error="skip">
+        <search position="after"><![CDATA[
+         <?php foreach ($shipping_method['quote'] as $quote) { ?>
+        ]]></search>
+			<add trim="true"><![CDATA[
+         <?php 
+           if(sizeof($_SESSION['shipping_price_array']) == 0 && $quote['code'] == 'calc_shipping.calc_shipping') {
+             $code = 'Disabled mode';
+             echo "<script>document.getElementById('".$quote['code']."').disabled = true;</script>";
+             $quote['cost']= 0;
+             $quote['text'] = "0kč";
+           }
+         ?>
+            ]]></add>
+      </operation>
+                
+	</file>
+
+	<file name="catalog/model/checkout/order.php">
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         return $order_id;
+        ]]></search>
+			<add trim="true"><![CDATA[
+				unset($_SESSION['shipping_price_array']);
+            ]]></add>
+      </operation>
+
+	</file>  
+    
+    <file name="catalog/controller/checkout/guest_shipping.php">
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $this->load->model('localisation/zone');
+        ]]></search>
+			<add trim="true"><![CDATA[
+		   $json = array();
+
+    	   $shipping_string = $this->session->data['guest']['shipping']['address_1'].' '.$this->session->data['guest']['shipping']['address_2'];
+           //Get delivery settings
+           $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = 1 and active = 1;");
+           foreach ($product_query->rows as $product) {
+             $delivery_id = $product['id'];
+             $mode = $product['mode'];
+             $country = $product['country'];
+             $city = $product['city'];
+             $adress = $product['adress'];
+             $free_distance = $product['free_distance'];
+             $price_per_one = $product['price_per_one'];
+           }
+           
+           if ($shipping_string != "" && $delivery_id > 0){
+            
+		     $language = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, strpos($_SERVER['HTTP_ACCEPT_LANGUAGE'], ','));
+             
+             $url = "http://maps.googleapis.com/maps/api/distancematrix/json?origins=".urlencode($adress)."+".urlencode($city)."&destinations=".urlencode($shipping_string)."+".urlencode($city)."&mode=driving&language=".$language."&sensor=false";
+
+             $shipping_array = json_decode(implode("", file($url)), true);
+           
+             $distance_array = $shipping_array['rows'][0]['elements'][0]['distance'];
+             $distance_array['value'] = round($distance_array['value']/1000, 1);
+             if ($distance_array['value'] < $free_distance) {
+               $distance_array['price'] = 0;
+             } else {
+               if ($mode == 1) {
+                 $distance_array['price'] = round(($distance_array['value']-$free_distance)*$price_per_one, 0);
+               } elseif ($mode == 2) $distance_array['price'] = round($distance_array['value']*$price_per_one, 0);
+             }
+             $distance_array['price_text'] = $distance_array['price'].$this->language->get('currency_text');
+             
+             $shipping_status = $shipping_array['status'];
+             $destination_addresses = $shipping_array['destination_addresses'][0];
+           
+             //if ($destination_addresses)
+           
+             //Praha, Česká republika
+                      
+             $destination_text = $distance_array['text'];
+             $destination_value = $distance_array['value'];
+           
+             $shipping_message = $destination_addresses."(".$destination_text." - ".$distance_array['price_text'].")<br/>";
+             $_SESSION['shipping_price_array'] = $distance_array;
+             
+           } else {
+             $shipping_status = "ERROR";
+             $shipping_message = $this->language->get('error_distance_calc_text'); 
+             
+           }
+			 $json = array(
+                'shipping_status'        => $shipping_status,
+				'shipping_message'       => $shipping_message,	
+			 );
+             
+            ]]></add>
+      </operation>
+      
+      <operation error="skip">
+        <search position="before"><![CDATA[
+         $this->data['button_continue'] = $this->language->get('button_continue');
+        ]]></search>
+			<add trim="true"><![CDATA[
+               $this->data['button_get_shipping_price'] = $this->language->get('button_get_shipping_price');
+               $this->data['not_calc_text'] = $this->language->get('not_calc_text');
+               $this->data['currency_text'] = $this->language->get('currency_text');
+            ]]></add>
+      </operation>
+      
+      <operation error="skip">
+        <search position="after"><![CDATA[
+         $this->data['countries'] = $this->model_localisation_country->getCountries();
+        ]]></search>
+			<add trim="true"><![CDATA[
+
+               $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
+               $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
+            ]]></add>
+      </operation>
+      
+	</file>
+
+	
+ 
+</modification>
