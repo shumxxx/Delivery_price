@@ -42,7 +42,7 @@ class ModelShippingCalcShipping extends Model {
 		$country_data = array();
 		
 		if (!$country_data) {
-			$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "delivery_settings WHERE active = '1' ORDER BY city ASC");
+			$query = $this->db->query("SELECT * FROM " . DB_PREFIX . "delivery_settings WHERE active = '1' ORDER BY sort, city ASC");
 	
 			$country_data = $query->rows;
 

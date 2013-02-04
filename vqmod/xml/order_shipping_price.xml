@@ -61,7 +61,7 @@
             
 		     $language = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, strpos($_SERVER['HTTP_ACCEPT_LANGUAGE'], ','));
              
-             $url = "http://maps.googleapis.com/maps/api/distancematrix/json?origins=".urlencode($adress)."+".urlencode($city)."&destinations=".urlencode($shipping_string)."+".urlencode($city)."&mode=driving&language=".$language."&sensor=false";
+             $url = "http://maps.googleapis.com/maps/api/distancematrix/json?origins=".urlencode($adress)."+".urlencode($city)."+".urlencode($country)."&destinations=".urlencode($shipping_string)."+".urlencode($city)."+".urlencode($country)."&mode=driving&language=".$language."&sensor=false";
 
              $shipping_array = json_decode(implode("", file($url)), true);
            
@@ -93,10 +93,6 @@
              
              //$shipping_message = $destination_addresses."(".$destination_text." - ".$distance_array['price_text'].")<br/>";
              $_SESSION['shipping_price_array'] = $distance_array;
-             
-           } else {
-             $shipping_status = "ERROR";
-             $shipping_message = $this->language->get('error_distance_calc_text'); 
              
            }
              
@@ -165,9 +161,13 @@
     city.value=select.options[select.selectedIndex].text;
   }
 </script>
+    <?php if ($city_id == "") { 
+            $city_id = $cities_delivery[0]['id'];
+            $city = $cities_delivery[0]['city'];
+          }
+    ?>
 <input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
   <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden()">
-    <option value=""><?php echo $text_select; ?></option>
     <?php foreach ($cities_delivery as $city_delivery) { ?>
     <?php if ($city_delivery['id'] == $city_id) { ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
@@ -190,10 +190,12 @@
                           if(sizeof($_SESSION['shipping_price_array']) > 0){
 		                    $price = $_SESSION['shipping_price_array']['price'];  
                             
-                            //$str = "";
-                            //foreach($this->session->data['guest'] as $k=>$v)  $str .= "$k=>$v<br/>";
-                     
-                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].")";
+                            //$str = "<br/>";
+                            //foreach($this->session->data['guest']['shipping'] as $k=>$v)  $str .= "$k=>$v<br/>";
+                            //$str .= "<br/>";
+                            //foreach($this->session->data['guest']['payment'] as $k=>$v)  $str .= "$k=>$v<br/>"; 
+                            
+                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].")<br/>url:".$_SESSION['shipping_price_array']['url'];
                             $quote['status'] = 'OK';
                           } else {
                             $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")";
@@ -249,11 +251,13 @@
          $this->load->model('localisation/zone');
         ]]></search>
 			<add trim="true"><![CDATA[
-		   $json = array();
-
-    	   $shipping_string = $this->session->data['guest']['shipping']['address_1'].' '.$this->session->data['guest']['shipping']['address_2'];
+    	   $shipping_string = $this->request->post['address_1'].' '.$this->request->post['address_2'];
+           $shipping_string = trim($shipping_string);
            //Get delivery settings
-           $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = 1 and active = 1;");
+           $city_id = $this->request->post['city_id'];
+           $this->session->data['guest']['shipping']['city_id'] = $city_id;
+           
+           $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = ".$city_id." and active = 1;");
            foreach ($product_query->rows as $product) {
              $delivery_id = $product['id'];
              $mode = $product['mode'];
@@ -263,7 +267,7 @@
              $free_distance = $product['free_distance'];
              $price_per_one = $product['price_per_one'];
            }
-           
+           // && ($_SESSION['shipping_price_array']['shipping_string'] != $shipping_string && $_SESSION['shipping_price_array']['city_id'] != $city_id)
            if ($shipping_string != "" && $delivery_id > 0){
             
 		     $language = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, strpos($_SERVER['HTTP_ACCEPT_LANGUAGE'], ','));
@@ -274,6 +278,11 @@
            
              $distance_array = $shipping_array['rows'][0]['elements'][0]['distance'];
              $distance_array['value'] = round($distance_array['value']/1000, 1);
+             $distance_array['distance_text'] = $distance_array['value']."km";
+             $distance_array['shipping_string'] = $shipping_string;
+             $distance_array['city_id'] = $city_id;
+             $distance_array['url'] = $url;
+             
              if ($distance_array['value'] < $free_distance) {
                $distance_array['price'] = 0;
              } else {
@@ -290,21 +299,13 @@
            
              //Praha, Česká republika
                       
-             $destination_text = $distance_array['text'];
-             $destination_value = $distance_array['value'];
+             //$destination_text = $distance_array['text'];
+             //$destination_value = $distance_array['value'];
            
-             $shipping_message = $destination_addresses."(".$destination_text." - ".$distance_array['price_text'].")<br/>";
+             //$shipping_message = $destination_addresses."(".$destination_text." - ".$distance_array['price_text'].")<br/>";
              $_SESSION['shipping_price_array'] = $distance_array;
              
-           } else {
-             $shipping_status = "ERROR";
-             $shipping_message = $this->language->get('error_distance_calc_text'); 
-             
            }
-			 $json = array(
-                'shipping_status'        => $shipping_status,
-				'shipping_message'       => $shipping_message,	
-			 );
              
             ]]></add>
       </operation>
@@ -325,7 +326,9 @@
          $this->data['countries'] = $this->model_localisation_country->getCountries();
         ]]></search>
 			<add trim="true"><![CDATA[
-
+               $this->load->model('shipping/calc_shipping');
+               $this->data['cities_delivery'] = $this->model_shipping_calc_shipping->getStoreList();
+               $this->data['city_id'] = $this->session->data['guest']['shipping']['city_id'];
                $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
                $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
             ]]></add>
@@ -333,6 +336,52 @@
       
 	</file>
 
+	<file name="catalog/view/theme/default/template/checkout/guest_shipping.tpl">
+	    <operation error="skip">
+            <search position="after"><![CDATA[
+              <td><span class="required">*</span> <?php echo $entry_city; ?></td>
+            ]]></search>
+			 <add trim="true"><![CDATA[
+              <!-- Del
+            ]]></add>
+
+        </operation>
+
+	    <operation error="skip">
+            <search position="after"><![CDATA[
+              <td><input type="text" name="city" value="<?php echo $city; ?>" class="large-field" /></td>
+            ]]></search>
+			 <add trim="true"><![CDATA[    
+              -->
+<td>
+<script>
+  function PutToHidden1(){
+
+    text = $("#shipping-address").find('#city_id option:selected').text();
+    $("#shipping-address").find('#city').val(text);
+
+  }
+</script>
+  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden1()">
+    <?php foreach ($cities_delivery as $city_delivery) { ?>
+    <?php if ($city == "" || $city_id == "") { 
+            $city_id = $city_delivery['id'];
+            $city = $city_delivery['city'];
+          }
+    ?>
+    <?php if ($city_delivery['id'] == $city_id) { ?>
+    <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
+    <?php } else { ?>
+    <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
+    <?php } ?>
+    <?php } ?>
+  </select>
+  <!--style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"-->
+ <input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
+</td>
+            ]]></add>
+        </operation>
+	</file>	
 	
  
 </modification>
