@@ -61,11 +61,6 @@
           </tr>
 
           <tr>
-            <td><?php echo $entry_sort_order; ?></td>
-            <td></td>
-          </tr> 
-
-          <tr>
             <td colspan="2">
               <table width="100%" id="new_store">
                 <tr><th colspan="6">Add new store</th></tr>
@@ -103,23 +98,47 @@
 
             </td>
           </tr> 
-                  
+          <tr>
+            <td colspan="2">
+            <strong>IF Distance < Free distance Distance price = 0</strong><br />
+            <strong>Mode#1 - caculate Distance price = (Distance - Free distance) * Price per one</strong><br />
+            <strong>Mode#2 - caculate Distance price = Distance * Price per one</strong><br />
+            </td>
+          </tr>                   
           <tr>
             <td colspan="2">
             
               <table width="100%" id="store_list">
-                <tr><th colspan="6">Store list</th></tr>
-                <tr><th>#</th><th>Country</th><th>City</th><th>Adress</th><th>Free distance</th><th><?php echo $entry_cost; ?></th><th>Active</th><th>Action</th></tr>
+                <tr><th colspan="8">Store list</th></tr>
+                <tr><th>#</th><th>Mode</th><th>Country</th><th>City</th><th>Adress</th><th>Free distance</th><th><?php echo $entry_cost; ?></th><th>Sort</th><th>Active</th><th>Action</th></tr>
               <?php 
                  $i = 1;
                  foreach ($delivery_list as $key=>$value) { ?>
                  <tr>
                    <td align="center"><?php echo $i.".";?></td>
+                   <td align="center">
+                     <?php
+                       $first_selected = '';
+                       $second_selected = '';
+                       if ($delivery_list[$key]['mode'] == 1) $first_selected = 'selected';
+                       elseif ($delivery_list[$key]['mode'] == 2) $second_selected = 'selected';
+                       
+                       $select = '<select id="calc_mode'.$key.'" name="calc_mode'.$key.'">';
+                       $select .= '<option value="1" '.$first_selected.'>1</option>';
+                       $select .= '<option value="2" '.$second_selected.'>2</option>';
+                       $select .= '</select>';
+                       
+                       echo $select;
+                     
+                     ?>
+                   
+                   </td>
                    <td align="center"><input type="text" id="calc_country<?php echo $key;?>" name="calc_country<?php echo $key;?>" value="<?php echo $delivery_list[$key]['country'];?>" /></td>
                    <td align="center"><input type="text" id="calc_city<?php echo $key;?>" name="calc_city<?php echo $key;?>" value="<?php echo $delivery_list[$key]['city'];?>" /></td>
                    <td align="center"><input type="text" id="calc_adress<?php echo $key;?>" name="calc_adress<?php echo $key;?>" value="<?php echo $delivery_list[$key]['adress'];?>" /></td>
                    <td align="center"><input type="text" id="calc_free_distance<?php echo $key;?>" name="calc_free_distance<?php echo $key;?>" value="<?php echo $delivery_list[$key]['free_distance'];?>" /></td>
                    <td align="center"><input type="text" id="calc_price_per_one<?php echo $key;?>" name="calc_price_per_one<?php echo $key;?>" value="<?php echo $delivery_list[$key]['price_per_one'];?>" /></td>
+                   <td align="center"><input type="text" size="1" id="calc_sort<?php echo $key;?>" name="calc_sort<?php echo $key;?>" value="<?php echo $delivery_list[$key]['sort'];?>" /></td>
                    <td align="center"><input type="checkbox" id="calc_active<?php echo $key;?>" name="calc_active<?php echo $key;?>" <?php if ($delivery_list[$key]['active'] == 1) echo 'checked';?> value='1'/></td>
                    <td align="center"><a href="#" onClick="top.SaveDeliverySettings(<?php echo $key;?>);$(this).fadeTo(250, 0.2);$(this).fadeTo(150, 0.7);return false;">Save</a></td>
                  <tr>
@@ -145,15 +164,19 @@ function SaveDeliverySettings(delivery_id) {
   var calc_free_distance = $('#calc_free_distance' + delivery_id).val();
   var calc_price_per_one = $('#calc_price_per_one' + delivery_id).val();
   var calc_active = $('#calc_active' + delivery_id).val();
+  var calc_sort = $('#calc_sort' + delivery_id).val();
+  var calc_mode = $('#calc_mode' + delivery_id).val();
   var token = $('#token').val();
 
   $.post('index.php?route=shipping/calc_shipping/save_delivery_settings&token='+ token, 
          '&delivery_id=' + delivery_id + 
-         '&country_id=' + calc_country + 
+         '&country=' + calc_country + 
          '&city=' + calc_city +
          '&adress=' + calc_adress +
          '&free_distance=' + calc_free_distance +
          '&price_per_one=' + calc_price_per_one +
+         '&sort=' + calc_sort +
+         '&mode=' + calc_mode +
          '&active=' + calc_active);
   
 }

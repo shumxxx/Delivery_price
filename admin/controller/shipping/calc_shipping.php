@@ -107,7 +107,7 @@ class ControllerShippingCalcShipping extends Controller {
 		$this->data['countries'] = $this->model_localisation_country->getCountries();
         
         //Get delivery settings
-        $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings;");
+        $product_query = $this->db->query("SELECT * FROM " . DB_PREFIX . "delivery_settings;");
         $delivery_list = array();
         foreach ($product_query->rows as $product) {
           $delivery_list[$product['id']] = array("mode"=>$product['mode'], 
@@ -116,6 +116,7 @@ class ControllerShippingCalcShipping extends Controller {
                                                "adress"=>$product['adress'],
                                                "free_distance"=>$product['free_distance'],
                                                "price_per_one"=>$product['price_per_one'],
+                                               "sort"=>$product['sort'],
                                                "active"=>$product['active']);
    
         }
@@ -144,8 +145,7 @@ class ControllerShippingCalcShipping extends Controller {
 	}
     
 	public function save_delivery_settings() {
-      //$this->load->model('shipping/calc_shipping');
-      //$this->model_shipping_calc_shipping->SaveSettings();
+
       if ($this->request->server['REQUEST_METHOD'] == 'POST') {
         $delivery_id = (int)$this->request->post['delivery_id'];  
         $country = $this->request->post['country'];
@@ -153,8 +153,9 @@ class ControllerShippingCalcShipping extends Controller {
         $adress = $this->request->post['adress'];
         $free_distance = (float)$this->request->post['free_distance'];  
         $price_per_one = (float)$this->request->post['price_per_one'];
+        $sort = (int)$this->request->post['sort'];
+        $mode = (int)$this->request->post['mode'];
         $calc_active = (int)$this->request->post['active'];
-        //if($this->request->post['calc_active'] == 'on') $calc_active = 1;
 
         if ($delivery_id > 0) {
           $free_distance = round($free_distance, 3);  
@@ -162,7 +163,8 @@ class ControllerShippingCalcShipping extends Controller {
 
           $this->db->query("UPDATE " . DB_PREFIX . "delivery_settings SET country = '" . $country . "', city = '" . $city . "', 
                                                                           adress = '" . $adress . "', free_distance = " . $free_distance . ",
-                                                                          price_per_one = " . $price_per_one . ", active = " . $calc_active . " 
+                                                                          price_per_one = " . $price_per_one . ", active = " . $calc_active . ",
+                                                                          sort = " . $sort . ", mode = " . $mode . "
                             WHERE id = " . $delivery_id);
         } 
       }
@@ -181,7 +183,6 @@ class ControllerShippingCalcShipping extends Controller {
         $free_distance = (float)$this->request->post['free_distance'];  
         $price_per_one = (float)$this->request->post['price_per_one'];
         $calc_active = (int)$this->request->post['active'];
-        //if($this->request->post['calc_active'] == 'on') $calc_active = 1;
 
         if ($country != "" && $city != "" && $adress != "") {
           $free_distance = round($free_distance, 3);  
