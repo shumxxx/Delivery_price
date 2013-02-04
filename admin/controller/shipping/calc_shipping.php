@@ -1,5 +1,5 @@
 <?php
-//class ControllerShippingcalc_shipping extends Controller {
+
 class ControllerShippingCalcShipping extends Controller {
 	private $error = array(); 
 	
@@ -161,7 +161,7 @@ class ControllerShippingCalcShipping extends Controller {
           $free_distance = round($free_distance, 3);  
           $price_per_one = round($price_per_one, 2);
 
-          $this->db->query("UPDATE " . DB_PREFIX . "delivery_settings SET country = '" . $country . "', city = '" . $city . "', 
+          $this->db->query("UPDATE " . DB_PREFIX . "delivery_settings SET country = '" . $country . "', city = '" . $city . "',
                                                                           adress = '" . $adress . "', free_distance = " . $free_distance . ",
                                                                           price_per_one = " . $price_per_one . ", active = " . $calc_active . ",
                                                                           sort = " . $sort . ", mode = " . $mode . "
