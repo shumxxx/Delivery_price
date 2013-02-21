@@ -58,7 +58,6 @@ class ModelShippingCalcShipping extends Model {
         
         if($shipping_id > 0){
             
-            
         } elseif($delivery_setting_id > 0 && $shipping_string != ""){
            
            $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = ".$delivery_setting_id." and active = 1;");

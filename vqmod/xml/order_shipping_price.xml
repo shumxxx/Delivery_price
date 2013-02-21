@@ -164,6 +164,7 @@
                                   $price = round(($delivery_distance-$free_distance)*$price_per_one, 0);
                                 } elseif ($mode == 2) $price = round($delivery_distance*$price_per_one, 0);
                               }
+                              
                               $_SESSION['shipping_price_array']['distance_text'] = $delivery_distance."km";
                               
                             } else {
