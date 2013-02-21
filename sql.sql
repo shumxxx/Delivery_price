@@ -1,3 +1,4 @@
+
 ALTER TABLE `address` ADD `delivery_setting_id` INT NOT NULL DEFAULT '-1',
 ADD `delivery_price` FLOAT NOT NULL DEFAULT '0';
 
