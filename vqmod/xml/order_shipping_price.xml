@@ -14,6 +14,7 @@
                $_['button_get_shipping_price']       = 'Get distance price';
                $_['not_calc_text']       = 'Not calc';
                $_['error_distance_calc_text']       = 'Fill field city and city ';
+               $_['free_calc_text']       = 'Free';
                $_['currency_text']       = 'kč';
             ]]></add>
       </operation>	
@@ -29,6 +30,7 @@
                $_['button_get_shipping_price']       = 'Расчитать стоимость доставки';
                $_['not_calc_text']       = 'Доставка не расчитана';
                $_['error_distance_calc_text']       = 'Выберите город и заполните поле адрес';
+               $_['free_calc_text']       = 'Бесплатно';
                $_['currency_text']       = 'kč';
             ]]></add>
       </operation>		
@@ -42,12 +44,12 @@
 			<add trim="true"><![CDATA[
            
            //Get delivery settings(order without registration)            
-    	   $shipping_string = trim($this->request->post['address_1']).' '.trim($this->request->post['address_2']);
-           $city_id = $this->request->post['city_id'];
-           $this->session->data['guest']['shipping']['city_id'] = $city_id;
+    	   $shipping_string = trim($this->request->post['address_1'].' '.$this->request->post['address_2']);
+           $delivery_setting_id = $this->request->post['delivery_setting_id'];
+           $this->session->data['guest']['shipping']['delivery_setting_id'] = $delivery_setting_id;
            
            $this->load->model('shipping/calc_shipping');
-           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($city_id, $shipping_string);
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($delivery_setting_id, $shipping_string);
 
              
             ]]></add>
@@ -71,7 +73,7 @@
 			<add trim="true"><![CDATA[
                $this->load->model('shipping/calc_shipping');
                $this->data['cities_delivery'] = $this->model_shipping_calc_shipping->getStoreList();
-               $this->data['city_id'] = $this->session->data['guest']['shipping']['city_id'];
+               $this->data['delivery_setting_id'] = $this->session->data['guest']['shipping']['delivery_setting_id'];
                $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
                $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
             ]]></add>
@@ -81,7 +83,7 @@
          if ($this->session->data['guest']['shipping_address']) {
         ]]></search>
 			<add trim="true"><![CDATA[
-               $this->session->data['guest']['shipping']['city_id'] = $this->request->post['city_id'];
+               $this->session->data['guest']['shipping']['delivery_setting_id'] = $this->request->post['delivery_setting_id'];
             ]]></add>
       </operation>
 	</file>
@@ -108,21 +110,24 @@
     var city;
     var select;
 
-    select=document.getElementById('city_id');
+    select=document.getElementById('delivery_setting_id');
     city=document.getElementById('city');
 
     city.value=select.options[select.selectedIndex].text;
   }
 </script>
-    <?php if ($city_id == "") { 
-            $city_id = $cities_delivery[0]['id'];
-            $city = $cities_delivery[0]['city'];
-          }
+    <?php 
+    if ($delivery_setting_id > 0) {}
+    else {
+      $delivery_setting_id = $cities_delivery[0]['id'];
+      $city = $cities_delivery[0]['city'];
+    }
+    
     ?>
 <input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
-  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden()">
+  <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden()">
     <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
@@ -142,55 +147,39 @@
 					    if ($result['code'] == "calc_shipping") {
 		                  $error = 0;
                           $price = 0;
+
+                          if (isset($this->session->data['shipping_address_id']) && $this->session->data['shipping_address_id'] > 0) {
+
+                            $this->load->model('shipping/calc_shipping');
+                            $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo(-1, "", $this->session->data['shipping_address_id']);
+   
+                          } 
                           
+                          $str = "<br/>";
+                          foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
+                          $str .= "<br/><br/>";
+                          foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>";  
+                      
                           if(sizeof($_SESSION['shipping_price_array']) > 0){
                             
-                            if ($this->session->data['shipping_address_id'] > 0) {
-
-                              $adress_query = $this->db->query("select a.delivery_distance, ds.mode, ds.free_distance, ds.price_per_one from address a
-                                                                left join delivery_settings ds on ds.id = a.delivery_setting_id
-                                                                where a.address_id = ".$this->session->data['shipping_address_id'].";");
-
-                              foreach ($adress_query->rows as $adress) {
-                                $delivery_distance = $adress['delivery_distance'];
-                                $mode = $adress['mode'];
-                                $free_distance = $adress['free_distance'];
-                                $price_per_one = $adress['price_per_one'];
-                              }
-                              if ($delivery_distance <= $free_distance) {
-                                $price = 0;
-                              } else {
-                                if ($mode == 1) {
-                                  $price = round(($delivery_distance-$free_distance)*$price_per_one, 0);
-                                } elseif ($mode == 2) $price = round($delivery_distance*$price_per_one, 0);
-                              }
-                              
-                              $_SESSION['shipping_price_array']['distance_text'] = $delivery_distance."km";
-                              
-                            } else {
+                            $price = $_SESSION['shipping_price_array']['price'];  
                             
-		                      $price = $_SESSION['shipping_price_array']['price'];  
+                            $free_text = "";
+                            if ($price == 0) $free_text = " - ".$this->language->get('free_calc_text');
                             
-                            }
-                            
-                            //$str = "<br/>";
-                            //foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
-                            //$str .= "<br/><br/>";
-                            //foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>"; 
-                                                          
-                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].")$str";
+                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].$free_text.")$str";
                             $quote['status'] = 'OK';
                             
                           } else $error = 1;
                           
                           if($error == 1) {
-                            $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")";
+                            $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")$str";
                             $quote['status'] = 'NO_CALC';  
                             $price = 0;
                           }
                           
                           $quote['quote']['calc_shipping']['cost']= $price;
-                          $quote['quote']['calc_shipping']['text'] = $price.$this->language->get('currency_text');
+                          $quote['quote']['calc_shipping']['text'] = $_SESSION['shipping_price_array']['price_text'];
 					    }
 
 
@@ -238,12 +227,12 @@
         ]]></search>
 			<add trim="true"><![CDATA[
            //Get delivery settings(shipping address)
-    	   $shipping_string = $this->request->post['address_1'].' '.$this->request->post['address_2'];
-           $city_id = $this->request->post['city_id'];
-           $this->session->data['guest']['shipping']['city_id'] = $city_id;
+    	   $shipping_string = trim($this->request->post['address_1'].' '.$this->request->post['address_2']);
+           $delivery_setting_id = $this->request->post['delivery_setting_id'];
+           $this->session->data['guest']['shipping']['delivery_setting_id'] = $delivery_setting_id;
            
            $this->load->model('shipping/calc_shipping');
-           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($city_id, $shipping_string);
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($delivery_setting_id, $shipping_string);
              
             ]]></add>
       </operation>
@@ -266,7 +255,7 @@
 			<add trim="true"><![CDATA[
                $this->load->model('shipping/calc_shipping');
                $this->data['cities_delivery'] = $this->model_shipping_calc_shipping->getStoreList();
-               $this->data['city_id'] = $this->session->data['guest']['shipping']['city_id'];
+               $this->data['delivery_setting_id'] = $this->session->data['guest']['shipping']['delivery_setting_id'];
                $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
                $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
             ]]></add>
@@ -295,19 +284,20 @@
 <script>
   function PutToHidden1(){
 
-    text = $("#shipping-address").find('#city_id option:selected').text();
+    text = $("#shipping-address").find('#delivery_setting_id option:selected').text();
     $("#shipping-address").find('#city').val(text);
 
   }
 </script>
-  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden1()">
-    <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city == "" || $city_id == "") { 
-            $city_id = $city_delivery['id'];
-            $city = $city_delivery['city'];
-          }
+  <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden1()">
+    <?php   if ($delivery_setting_id > 0) {}
+            else {
+              $delivery_setting_id = $cities_delivery[0]['id'];
+              $city = $cities_delivery[0]['city'];
+            }
     ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
+    <?php foreach ($cities_delivery as $city_delivery) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
@@ -330,11 +320,11 @@
 			<add trim="true"><![CDATA[
            //Get delivery settings            
     	   $shipping_string = trim($this->request->post['address_1']).' '.trim($this->request->post['address_2']);
-           $city_id = $this->request->post['city_id'];
-           $this->session->data['guest']['shipping']['city_id'] = $city_id;
+           $delivery_setting_id = $this->request->post['delivery_setting_id'];
+           $this->session->data['guest']['shipping']['delivery_setting_id'] = $delivery_setting_id;
                       
            $this->load->model('shipping/calc_shipping');
-           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($city_id, $shipping_string);
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($delivery_setting_id, $shipping_string);
              
             ]]></add>
       </operation>
@@ -357,7 +347,7 @@
 			<add trim="true"><![CDATA[
                $this->load->model('shipping/calc_shipping');
                $this->data['cities_delivery'] = $this->model_shipping_calc_shipping->getStoreList();
-               $this->data['city_id'] = $this->session->data['guest']['shipping']['city_id'];
+               $this->data['delivery_setting_id'] = $this->session->data['guest']['shipping']['delivery_setting_id'];
                $this->data['shipping_address_1'] = $this->session->data['guest']['shipping']['address_1'];
                $this->data['shipping_address_2'] = $this->session->data['guest']['payment']['address_1'];
             ]]></add>
@@ -385,19 +375,24 @@
 <script>
   function PutToHidden2(){
 
-    text = $("#shipping-address").find('#city_id option:selected').text();
+    text = $("#shipping-address").find('#delivery_setting_id option:selected').text();
     $("#shipping-address").find('#city').val(text);
 
   }
 </script>
-  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden2()">
+  <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden2()">
+    <?php   
+      if ($delivery_setting_id > 0) {}
+      else {
+        $delivery_setting_id = $cities_delivery[0]['id'];
+        $city = $cities_delivery[0]['city'];
+      }
+    ?>    
+    
     <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city == "" || $city_id == "") { 
-            $city_id = $city_delivery['id'];
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
             $city = $city_delivery['city'];
-          }
     ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
@@ -438,7 +433,7 @@
         ]]></search>
 			<add trim="true"><![CDATA[
 
-               $this->session->data['city_id'] = $this->request->post['city_id'];
+               $this->session->data['delivery_setting_id'] = $this->request->post['delivery_setting_id'];
 
             ]]></add>
       </operation>
@@ -464,9 +459,9 @@
            $shipping_string = trim($data['address_1'].' '.$data['address_2']);
 
            $this->load->model('shipping/calc_shipping');
-           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($data['city_id'], $shipping_string);
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($data['delivery_setting_id'], $shipping_string);
            
-           $this->db->query("INSERT INTO " . DB_PREFIX . "address SET customer_id = '" . (int)$customer_id . "', firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', city = '" . $this->db->escape($data['city']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', country_id = '" . (int)$data['country_id'] . "', zone_id = '" . (int)$data['zone_id'] . "', delivery_setting_id = '" . $data['city_id'] . "', delivery_distance = '" . $distance_array['value'] . "'");
+           $this->db->query("INSERT INTO " . DB_PREFIX . "address SET customer_id = '" . (int)$customer_id . "', firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', city = '" . $this->db->escape($data['city']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', country_id = '" . (int)$data['country_id'] . "', zone_id = '" . (int)$data['zone_id'] . "', delivery_setting_id = '" . $data['delivery_setting_id'] . "', delivery_distance = '" . $distance_array['value'] . "'");
             ]]></add>
       </operation>
 	</file>
@@ -492,19 +487,26 @@
 <script>
   function PutToHidden3(){
 
-    text = $("#shipping-address").find('#city_id option:selected').text();
+    text = $("#shipping-address").find('#delivery_setting_id option:selected').text();
     $("#shipping-address").find('#city').val(text);
 
   }
 </script>
-  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden3()">
-    <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city == "" || $city_id == "") { 
-            $city_id = $city_delivery['id'];
-            $city = $city_delivery['city'];
-          }
+
+    <?php 
+    //Controled 
+    if ($delivery_setting_id > 0) {}
+    else {
+      $delivery_setting_id = $cities_delivery[0]['id'];
+      $city = $cities_delivery[0]['city'];
+    }
     ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
+    
+  <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden3()">    
+    <?php foreach ($cities_delivery as $city_delivery) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
+            $city = $city_delivery['city'];
+    ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
@@ -536,13 +538,41 @@
            
            $shipping_string = trim($data['address_1'].' '.$data['address_2']);
 
-           $city_id = $this->request->post['city_id'];
-           $this->session->data['guest']['shipping']['city_id'] = $city_id;
+           $delivery_setting_id = $this->request->post['delivery_setting_id'];
+           $this->session->data['guest']['shipping']['delivery_setting_id'] = $delivery_setting_id;
            
            $this->load->model('shipping/calc_shipping');
-           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($city_id, $shipping_string);
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($delivery_setting_id, $shipping_string);
            
-           $this->db->query("INSERT INTO " . DB_PREFIX . "address SET customer_id = '" . (int)$this->customer->getId() . "', firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "', delivery_setting_id = '" . $data['city_id'] . "', delivery_distance = '" . $distance_array['value'] . "'");
+           $this->db->query("INSERT INTO " . DB_PREFIX . "address SET customer_id = '" . (int)$this->customer->getId() . "', firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "', delivery_setting_id = '" . $data['delivery_setting_id'] . "', delivery_distance = '" . $distance_array['value'] . "'");
+            ]]></add>
+      </operation>
+      
+      <operation error="log">
+        <search position="before"><![CDATA[
+         $this->db->query("UPDATE " . DB_PREFIX . "address SET firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "' WHERE address_id  = '" . (int)$address_id . "' AND customer_id = '" . (int)$this->customer->getId() . "'");
+        ]]></search>
+			<add trim="true"><![CDATA[
+               /*
+            ]]></add>
+      </operation>
+      <operation error="log">
+        <search position="after"><![CDATA[
+        $this->db->query("UPDATE " . DB_PREFIX . "address SET firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "' WHERE address_id  = '" . (int)$address_id . "' AND customer_id = '" . (int)$this->customer->getId() . "'");
+        ]]></search>
+			<add trim="true"><![CDATA[
+           */
+           
+           $shipping_string = trim($data['address_1'].' '.$data['address_2']);
+
+           $delivery_setting_id = $this->request->post['delivery_setting_id'];
+           $this->session->data['guest']['shipping']['delivery_setting_id'] = $delivery_setting_id;
+           
+           $this->load->model('shipping/calc_shipping');
+           $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo($delivery_setting_id, $shipping_string);
+           
+           //$this->db->query("INSERT INTO " . DB_PREFIX . "address SET customer_id = '" . (int)$this->customer->getId() . "', firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "', delivery_setting_id = '" . $data['delivery_setting_id'] . "', delivery_distance = '" . $distance_array['value'] . "'");
+           $this->db->query("UPDATE " . DB_PREFIX . "address SET firstname = '" . $this->db->escape($data['firstname']) . "', lastname = '" . $this->db->escape($data['lastname']) . "', company = '" . $this->db->escape($data['company']) . "', company_id = '" . $this->db->escape($data['company_id']) . "', tax_id = '" . $this->db->escape($data['tax_id']) . "', address_1 = '" . $this->db->escape($data['address_1']) . "', address_2 = '" . $this->db->escape($data['address_2']) . "', postcode = '" . $this->db->escape($data['postcode']) . "', city = '" . $this->db->escape($data['city']) . "', zone_id = '" . (int)$data['zone_id'] . "', country_id = '" . (int)$data['country_id'] . "', delivery_setting_id = '" . $data['delivery_setting_id'] . "', delivery_distance = '" . $distance_array['value'] . "' WHERE address_id  = '" . (int)$address_id . "' AND customer_id = '" . (int)$this->customer->getId() . "'");
             ]]></add>
       </operation>
 	</file>
@@ -565,22 +595,25 @@
 			 <add trim="true"><![CDATA[    
               -->
 <td>
-<script>
+ <script>
   function PutToHidden4(){
 
-    text = $("#shipping-address").find('#city_id option:selected').text();
-    $("#shipping-address").find('#city').val(text);
-
+    text = $("#payment-new").find('#delivery_setting_id option:selected').text();
+    $("#payment-new").find('#city').val(text);
   }
 </script>
-  <select name="city_id"  id="city_id" class="large-field" onChange="PutToHidden4()">
-    <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city == "" || $city_id == "") { 
-            $city_id = $city_delivery['id'];
-            $city = $city_delivery['city'];
-          }
+    <?php   
+    if ($delivery_setting_id > 0) {}
+    else {
+      $delivery_setting_id = $cities_delivery[0]['id'];
+      $city = $cities_delivery[0]['city'];
+      //if (!isset($this->session->data['delivery_setting_id'])) $this->data['delivery_setting_id'] = $this->data['cities_delivery'][0][id];
+    }
     ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
+  <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden4()">
+    <?php foreach ($cities_delivery as $city_delivery) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
+            $city = $city_delivery['city'];?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
@@ -589,6 +622,7 @@
   </select>
   <!--style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"-->
  <input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
+
 </td>
             ]]></add>
         </operation>
@@ -621,7 +655,7 @@
         ]]></search>
 			<add trim="true"><![CDATA[
 
-               $this->session->data['city_id'] = $this->request->post['city_id'];
+               $this->session->data['delivery_setting_id'] = $this->request->post['delivery_setting_id'];
 
             ]]></add>
       </operation>
@@ -655,7 +689,7 @@
         ]]></search>
 			<add trim="true"><![CDATA[
 
-               $this->session->data['city_id'] = $this->request->post['city_id'];
+               $this->session->data['delivery_setting_id'] = $this->request->post['delivery_setting_id'];
 
             ]]></add>
       </operation>
@@ -704,19 +738,23 @@
 <script>
   function PutToHidden(){
 
-    text = $("#city_id").find('option:selected').text();
+    text = $("#delivery_setting_id").find('option:selected').text();
     $("#city").val(text);
 
   }
 </script>
-  <select name="city_id"  id="city_id" onChange="PutToHidden()">
+  <select name="delivery_setting_id"  id="delivery_setting_id" onChange="PutToHidden()">
+    <?php   
+    if ($delivery_setting_id > 0) {}
+    else {
+      $delivery_setting_id = $cities_delivery[0]['id'];
+      $city = $cities_delivery[0]['city'];
+    }
+    ?> 
     <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city == "" || $city_id == "") { 
-            $city_id = $city_delivery['id'];
-            $city = $city_delivery['city'];
-          }
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
+             $city = $city_delivery['city'];
     ?>
-    <?php if ($city_delivery['id'] == $city_id) { ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>

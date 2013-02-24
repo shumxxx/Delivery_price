@@ -68,24 +68,9 @@
                  <tr>
                    <td align="center">
                     <input type="text" id="calc_country" name="calc_country" value="" />
-                   <!-- 
-                     <select name="country_id" class="large-field">
-                        <option value=""><?php echo $text_select; ?></option>
-                          <?php foreach ($countries as $country) { ?>
-                            <?php if ($country['country_id'] == $country_id) { ?>
-                              <option value="<?php echo $country['country_id']; ?>" selected="selected"><?php echo $country['name']; ?></option>
-                            <?php } else { ?>
-                              <option value="<?php echo $country['country_id']; ?>"><?php echo $country['name']; ?></option>
-                            <?php } ?>
-                        <?php } ?>
-                     </select>-->
-                   
                    </td>
                    <td align="center">
-                   <input type="text" id="calc_city" name="calc_city" value="" />
-                  <!--   <select name="zone_id" class="large-field">
-                       <option value=""></option>
-                      </select>-->
+                     <input type="text" id="calc_city" name="calc_city" value="" />
                    </td>
                    <td align="center"><input type="text" id="calc_adress" name="calc_adress" value="" /></td>
                    <td align="center"><input type="text" id="calc_free_distance" name="calc_free_distance" value="" /></td>

@@ -55,23 +55,53 @@ class ModelShippingCalcShipping extends Model {
 		
         $distance_array = array();
 		$shipping_string = trim($shipping_string);
+        $calc = 0;
+        $price = 0;
         
         if($shipping_id > 0){
             
-        } elseif($delivery_setting_id > 0 && $shipping_string != ""){
+          $adress_query = $this->db->query("select a.address_id, a.delivery_distance, a.delivery_setting_id, a.address_1, a.address_2, ds.mode, ds.free_distance, ds.price_per_one from address a
+                                            left join delivery_settings ds on ds.id = a.delivery_setting_id
+                                            where a.address_id = ".$shipping_id.";");
+
+          foreach ($adress_query->rows as $adress) {
+            $address_id = $adress['address_id'];
+            $delivery_distance = $adress['delivery_distance'];
+            $delivery_setting_id = $adress['delivery_setting_id'];
+            $mode = $adress['mode'];
+            $free_distance = $adress['free_distance'];
+            $price_per_one = $adress['price_per_one'];
+            $address_1 = $adress['address_1'];
+            $address_2 = $adress['address_2'];
+          }
+          if ($delivery_distance > 0){
+            if ($delivery_distance <= $free_distance) {
+              $price = 0;
+            } else {
+              if ($mode == 1) $price = round(($delivery_distance-$free_distance)*$price_per_one, 0);
+              elseif ($mode == 2) $price = round($delivery_distance*$price_per_one, 0);
+            }
+          } else {
+            $shipping_string = trim($address_1." ".$address_2);
+            $calc = 1;
+          }
+          
+        }
+
+        if(($delivery_setting_id > 0 && $shipping_string != "") || ($calc == 1 && $shipping_id > 0)){
            
-           $product_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = ".$delivery_setting_id." and active = 1;");
+           $settings_query = $this->db->query("SELECT id, mode, country, city, adress, free_distance, price_per_one, active FROM " . DB_PREFIX . "delivery_settings WHERE id = ".$delivery_setting_id." and active = 1;");
            ////$query->row['total'];
-           foreach ($product_query->rows as $product) {
-             $delivery_id = $product['id'];
-             $mode = $product['mode'];
-             $country = $product['country'];
-             $city = $product['city'];
-             $adress = $product['adress'];
-             $free_distance = $product['free_distance'];
-             $price_per_one = $product['price_per_one'];
+           foreach ($settings_query->rows as $setting) {
+             $delivery_id = $setting['id'];
+             $mode = $setting['mode'];
+             $country = $setting['country'];
+             $city = $setting['city'];
+             $adress = $setting['adress'];
+             $free_distance = $setting['free_distance'];
+             $price_per_one = $setting['price_per_one'];
            }
-           // && ($_SESSION['shipping_price_array']['shipping_string'] != $shipping_string && $_SESSION['shipping_price_array']['city_id'] != $city_id)
+        
            if ($shipping_string != "" && $delivery_id > 0){
             
 		     $language = substr($_SERVER['HTTP_ACCEPT_LANGUAGE'], 0, strpos($_SERVER['HTTP_ACCEPT_LANGUAGE'], ','));
@@ -82,29 +112,36 @@ class ModelShippingCalcShipping extends Model {
            
              $distance_array = $shipping_array['rows'][0]['elements'][0]['distance'];
              $distance_array['value'] = round($distance_array['value']/1000, 1);
-             $distance_array['distance_text'] = $distance_array['value']."km";
+             //$distance_array['distance_text'] = $distance_array['value']."km";
              $distance_array['shipping_string'] = $shipping_string;
-             $distance_array['city_id'] = $city_id;
+             $distance_array['delivery_setting_id'] = $delivery_id;
              $distance_array['url'] = $url;
              
              if ($distance_array['value'] <= $free_distance) {
                $distance_array['price'] = 0;
              } else {
                if ($mode == 1) {
-                 $distance_array['price'] = round(($distance_array['value']-$free_distance)*$price_per_one, 0);
-               } elseif ($mode == 2) $distance_array['price'] = round($distance_array['value']*$price_per_one, 0);
+                 $price = round(($distance_array['value']-$free_distance)*$price_per_one, 0);
+               } elseif ($mode == 2) $price = round($distance_array['value']*$price_per_one, 0);
              }
-             $distance_array['price_text'] = $distance_array['price'].$this->language->get('currency_text');
-             $distance_array['distance_text'] = $distance_array['value']."km";
+
+             $delivery_distance = $distance_array['value'];
              
-             $shipping_status = $shipping_array['status'];
-             $destination_addresses = $shipping_array['destination_addresses'][0];
-             
-             $_SESSION['shipping_price_array'] = $distance_array;
-             
+             if($shipping_id > 0) $update_adress_query = $this->db->query("UPDATE address SET delivery_distance = ". $distance_array['value'] ." WHERE address_id = ".$shipping_id.";");
+
+             //$shipping_status = $shipping_array['status'];
+             //$destination_addresses = $shipping_array['destination_addresses'][0];
+
            }
+
         }
-         
+        
+        $distance_array['price_text'] = $price.$this->language->get('currency_text');
+        $distance_array['distance_text'] = $delivery_distance."km";
+        $distance_array['price'] = $price;
+        
+        $_SESSION['shipping_price_array'] = $distance_array; 
+        
 		return $distance_array;
 	}
 
