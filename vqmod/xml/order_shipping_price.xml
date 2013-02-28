@@ -124,16 +124,19 @@
     }
     
     ?>
-<input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
+    <br/>
   <select name="delivery_setting_id"  id="delivery_setting_id" class="large-field" onChange="PutToHidden()">
     <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city_delivery['id'] == $delivery_setting_id) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
+             $city = $city_delivery['city'];
+    ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>
     <?php } ?>
     <?php } ?>
   </select>
+<input type="text" id="city" name="city" value="<?php echo $city; ?>" class="large-field" style="visibility: hidden; height: 0px; padding: 0px; border: 0px none;"/>
             ]]></add>
         </operation>
 	</file>			  
@@ -144,6 +147,7 @@
          if ($quote) {
         ]]></search>
 			<add trim="true"><![CDATA[
+
 					    if ($result['code'] == "calc_shipping") {
 		                  $error = 0;
                           $price = 0;
@@ -155,11 +159,11 @@
    
                           } 
                           
-                          $str = "<br/>";
+                          $str .= "<br/>";
                           foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
                           $str .= "<br/><br/>";
                           foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>";  
-                      
+                          
                           if(sizeof($_SESSION['shipping_price_array']) > 0){
                             
                             $price = $_SESSION['shipping_price_array']['price'];  
@@ -167,7 +171,7 @@
                             $free_text = "";
                             if ($price == 0) $free_text = " - ".$this->language->get('free_calc_text');
                             
-                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].$free_text.")$str";
+                            $quote['title'] = $quote['title']."(".$_SESSION['shipping_price_array']['distance_text'].$free_text.")";
                             $quote['status'] = 'OK';
                             
                           } else $error = 1;
@@ -297,7 +301,9 @@
             }
     ?>
     <?php foreach ($cities_delivery as $city_delivery) { ?>
-    <?php if ($city_delivery['id'] == $delivery_setting_id) { ?>
+    <?php if ($city_delivery['id'] == $delivery_setting_id) { 
+            $city = $city_delivery['city'];
+    ?>
     <option value="<?php echo $city_delivery['id']; ?>" selected="selected"><?php echo $city_delivery['city']; ?></option>
     <?php } else { ?>
     <option value="<?php echo $city_delivery['id']; ?>"><?php echo $city_delivery['city']; ?></option>

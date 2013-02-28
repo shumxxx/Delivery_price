@@ -1,5 +1,5 @@
-ALTER TABLE `address` ADD `delivery_setting_id` INT NOT NULL DEFAULT '-1',
-ADD `delivery_price` FLOAT NOT NULL DEFAULT '0';
+ALTER TABLE `address` ADD `delivery_setting_id` INT NOT NULL DEFAULT '1',
+ADD `delivery_distance` FLOAT NOT NULL DEFAULT '0';
 
 CREATE TABLE delivery_settings (
   id int(11) NOT NULL AUTO_INCREMENT,
