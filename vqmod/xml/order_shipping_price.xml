@@ -158,11 +158,11 @@
                             $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo(-1, "", $this->session->data['shipping_address_id']);
    
                           } 
-                          
-                          $str .= "<br/>";
-                          foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
-                          $str .= "<br/><br/>";
-                          foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>";  
+
+                          //$str .= "<br/>";
+                          //foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
+                          //$str .= "<br/>";
+                          //foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>";  
                           
                           if(sizeof($_SESSION['shipping_price_array']) > 0){
                             
