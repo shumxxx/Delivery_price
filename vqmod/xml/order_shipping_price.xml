@@ -147,22 +147,18 @@
          if ($quote) {
         ]]></search>
 			<add trim="true"><![CDATA[
-
+                          
 					    if ($result['code'] == "calc_shipping") {
 		                  $error = 0;
                           $price = 0;
-
+                          
+                          
                           if (isset($this->session->data['shipping_address_id']) && $this->session->data['shipping_address_id'] > 0) {
 
                             $this->load->model('shipping/calc_shipping');
                             $distance_array = $this->model_shipping_calc_shipping->getDistanceInfo(-1, "", $this->session->data['shipping_address_id']);
    
                           } 
-
-                          //$str .= "<br/>";
-                          //foreach($this->session->data as $k=>$v)  $str .= "$k=>$v<br/>";
-                          //$str .= "<br/>";
-                          //foreach($_SESSION['shipping_price_array'] as $k=>$v)  $str .= "$k=>$v<br/>";  
                           
                           if(sizeof($_SESSION['shipping_price_array']) > 0){
                             
@@ -177,13 +173,14 @@
                           } else $error = 1;
                           
                           if($error == 1) {
-                            $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")$str";
+                            $quote['title'] = $quote['title']."(".$this->language->get('not_calc_text').")";
                             $quote['status'] = 'NO_CALC';  
                             $price = 0;
                           }
                           
                           $quote['quote']['calc_shipping']['cost']= $price;
                           $quote['quote']['calc_shipping']['text'] = $_SESSION['shipping_price_array']['price_text'];
+
 					    }
 
 

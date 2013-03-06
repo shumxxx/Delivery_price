@@ -1,9 +1,9 @@
 <?php
 // Heading
-$_['heading_title']    = 'Расчёт стоимости доставки(Google maps) - Работает в режиме тестирования';
+$_['heading_title']    = 'Расчёт стоимости доставки(Google maps)';
 
 // Text
-$_['text_shipping']    = 'Расчёт стоимости доставки(Google maps) - Работает в режиме тестирования';
+$_['text_shipping']    = 'Расчёт стоимости доставки(Google maps)';
 $_['text_success']     = 'Настройки модуля обновлены!';
 
 // Entry

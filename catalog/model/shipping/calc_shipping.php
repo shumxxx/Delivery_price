@@ -12,7 +12,19 @@ class ModelShippingCalcShipping extends Model {
 		} else {
 			$status = false;
 		}
-
+        
+        $getSubTotal = $this->cart->getSubTotal();
+        $getTaxes = $this->cart->getTaxes();
+        $tax_value = 0;
+        foreach($getTaxes as $value){
+          $tax_value = $tax_value + $value;
+        }
+        $total_price = round($tax_value + $getSubTotal);
+        
+		if ($total_price < 500) {
+		  $status = false;
+		} else $status = true;
+        
 		$method_data = array();
 	
 		if ($status) {
